@@ -22,3 +22,7 @@ Cargo.lock
 
 # Ignore VS Code files
 /.vscode
+
+# Added by cargo
+
+/target
