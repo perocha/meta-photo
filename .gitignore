@@ -23,6 +23,8 @@ Cargo.lock
 # Ignore VS Code files
 /.vscode
 
-# Added by cargo
+# Ignore local config yaml file
+config.yaml
 
+# Added by cargo
 /target
