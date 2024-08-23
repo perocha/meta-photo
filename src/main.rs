@@ -2,10 +2,10 @@ use serde::Deserialize;
 use std::fs;
 use rexif::ExifTag;
 use rexif::parse_file;
-use glob::glob;
 use std::path::Path;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use walkdir::WalkDir; // Add the walkdir crate for recursive file searching
 
 #[derive(Debug, Copy, Clone)]
 struct F64(pub f64);
@@ -87,26 +87,28 @@ fn main() {
     // Load the config file
     let config = load_config_from_yaml(CONFIG_FILE_PATH);
 
-    // Use the pattern from the config file
-    let pattern = &config.filepath;
+    // Use the filepath from the config file as the root directory
+    let root_dir = &config.filepath;
 
     let mut metadata_map: HashMap<MetaData, u32> = HashMap::new();
 
-    // Iterate over each file matching the pattern
-    for entry in glob(pattern).expect("Failed to read glob pattern") {
-        match entry {
-            Ok(path) => {
-                if let Some((f_stop, shutter_speed, iso)) = extract_exif_data(&path) {
-                    let meta_data = MetaData {
-                        f_stop: F64(f_stop),
-                        exposure: to_closest_shutter_speed(shutter_speed).to_string(),
-                        iso,
-                    };
+    // Iterate over each file in the directory and subdirectories
+    for entry in WalkDir::new(root_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
 
-                    *metadata_map.entry(meta_data).or_insert(0) += 1;
-                }
-            },
-            Err(e) => println!("{:?}", e),
+        // Only process files with the .jpg or .jpeg extension
+        if path.extension().and_then(|s| s.to_str()).map(|s| s.to_lowercase()) == Some("jpg".to_string()) ||
+           path.extension().and_then(|s| s.to_str()).map(|s| s.to_lowercase()) == Some("jpeg".to_string()) {
+
+            if let Some((f_stop, shutter_speed, iso)) = extract_exif_data(&path) {
+                let meta_data = MetaData {
+                    f_stop: F64(f_stop),
+                    exposure: to_closest_shutter_speed(shutter_speed).to_string(),
+                    iso,
+                };
+
+                *metadata_map.entry(meta_data).or_insert(0) += 1;
+            }
         }
     }
 
